@@ -120,3 +120,6 @@ Author
 Kufoin Synthia Femuh
 
 DevOps and Cloud Engineering Trainee
+
+## Git Merge Conflict Practice
+This change was made directly on the main branch.
