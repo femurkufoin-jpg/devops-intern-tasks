@@ -99,6 +99,7 @@ Further practice includes merge conflict creation and resolution.
 
 Project Status
 
+
 The project is actively progressing under mentor supervision.
 
 Each assignment will be completed sequentially, with practical exercises, troubleshooting notes, documentation, and GitHub evidence recorded throughout the process.
@@ -122,4 +123,5 @@ Kufoin Synthia Femuh
 DevOps and Cloud Engineering Trainee
 
 ## Git Merge Conflict Practice
-This change was made directly on the main branch.
+This section demonstrates how Git merge conflicts are identified and resolved.
+The feature branch introduced the first change, while the main branch introduced a different change.
