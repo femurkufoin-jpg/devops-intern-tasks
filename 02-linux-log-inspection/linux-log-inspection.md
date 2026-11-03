@@ -1,4 +1,3 @@
-
 # Task 2: Linux Log Inspection
 
 ## 1. Introduction
@@ -7,13 +6,15 @@ Linux log inspection is the process of examining system records to understand sy
 
 During this task, I used Ubuntu Linux running on Windows Subsystem for Linux (WSL 2) to explore Linux log files and practise different log inspection commands.
 
+The objective was to understand how Linux administrators and DevOps engineers use logs to monitor systems, investigate issues, and maintain reliable infrastructure.
+
 ## 2. Environment Setup
 
-- Operating System: Windows
-- Linux Distribution: Ubuntu
-- Linux Environment: Windows Subsystem for Linux (WSL 2)
-- Terminal: VS Code integrated terminal
-- Project Repository: devops-intern-tasks
+**Operating System:** Windows  
+**Linux Distribution:** Ubuntu  
+**Linux Environment:** Windows Subsystem for Linux (WSL 2)  
+**Terminal:** VS Code integrated terminal  
+**Project Repository:** `devops-intern-tasks`
 
 I verified the WSL installation using:
 
@@ -28,9 +29,13 @@ Ubuntu was installed and configured to use WSL 2.
 
 I had forgotten my Ubuntu password. I opened Ubuntu as the root user from PowerShell and reset the password for my normal account.
 
+From PowerShell:
+
 ```powershell
 wsl -d Ubuntu -u root
 ```
+
+Then, inside Ubuntu:
 
 ```bash
 passwd synthia_k
@@ -52,16 +57,16 @@ I identified the following important files and directories:
 
 | Log file | Purpose |
 |---|---|
-| syslog | Records general system activities and messages. |
-| auth.log | Records authentication and security-related events. |
-| kern.log | Contains Linux kernel messages. |
-| dmesg | Displays kernel messages, including hardware and startup information. |
-| boot.log | Contains system boot messages. |
-| dpkg.log | Records package installation and removal activities. |
-| journal/ | Stores systemd journal data. |
-| lastlog | Contains information about users' most recent logins. |
-| wtmp | Records login and logout activity. |
-| btmp | Records failed login attempts. |
+| `syslog` | Records general system activities and messages. |
+| `auth.log` | Records authentication and security-related events. |
+| `kern.log` | Contains Linux kernel messages. |
+| `dmesg` | Displays kernel messages, including hardware and startup information. |
+| `boot.log` | Contains system boot messages. |
+| `dpkg.log` | Records package installation and removal activities. |
+| `journal/` | Stores systemd journal data. |
+| `lastlog` | Contains information about users' most recent logins. |
+| `wtmp` | Records login and logout activity. |
+| `btmp` | Records failed login attempts. |
 
 I also observed compressed log files ending in `.gz`, which generally contain older rotated logs.
 
@@ -76,6 +81,7 @@ sudo tail -n 20 /var/log/syslog
 This command displayed the last 20 entries in the system log.
 
 I observed:
+
 - System service startup messages.
 - SSH agent and GPG agent socket activity.
 - Systemd session activity.
@@ -84,7 +90,7 @@ I observed:
 
 ### Searching for Errors and Warnings
 
-I used grep to search for important messages:
+I used `grep` to search for important messages:
 
 ```bash
 sudo grep -iE 'error|fail|warning' /var/log/syslog | tail -n 20
@@ -103,6 +109,7 @@ sudo tail -n 20 /var/log/auth.log
 ```
 
 I observed:
+
 - User session opening and closing events.
 - Root account login activity.
 - Password reset activity.
@@ -134,6 +141,7 @@ sudo dmesg -T | tail -n 20
 ```
 
 I observed messages relating to:
+
 - System termination signals.
 - System-bus connection failures.
 - WSL graphics adapter operations.
@@ -142,9 +150,11 @@ I observed messages relating to:
 
 The output included messages such as:
 
-- `dxgki_query_adapter_info: ioctl failed`
-- `WaitForBootProcess`
-- `system.journal corrupted or uncleanly shut down`
+```text
+dxgkio_query_adapter_info: ioctl failed
+WaitForBootProcess
+system.journal corrupted or uncleanly shut down
+```
 
 These messages provided examples of kernel-level and WSL startup issues.
 
@@ -168,7 +178,7 @@ This exercise demonstrated how administrators can monitor system activity and ob
 
 ## 8. Inspecting Systemd Journal Logs
 
-I used journalctl to inspect system journal records:
+I used `journalctl` to inspect system journal records:
 
 ```bash
 sudo journalctl -n 20 --no-pager
@@ -182,81 +192,94 @@ I also filtered the journal for error-priority messages:
 sudo journalctl -p err -n 10 --no-pager
 ```
 
-The output revealed errors involving:
+The command displayed recent error-level journal entries.
 
-- WSL graphics adapter operations.
-- WSL boot process timeout.
-- Ubuntu Insights collection service.
-- Ubuntu Insights upload service.
-- Missing files or directories during service startup.
+I observed:
 
-These errors were observed and documented. They were not repaired as part of this exercise.
+- WSL graphics adapter errors.
+- System initialization messages.
+- Ubuntu Insights service failures.
+- Mount namespace errors.
+- Missing file or directory messages.
 
-## 9. Troubleshooting and Challenges
+Some entries included:
 
-### Challenge 1: Forgotten Ubuntu Password
+```text
+dxgkio_query_adapter_info: ioctl failed
+```
 
-I could not remember my existing Ubuntu password when attempting to inspect system logs with sudo.
+Other entries showed failures involving Ubuntu Insights services and missing files.
 
-**Solution:** I opened Ubuntu as the root user through PowerShell and used the passwd command to reset the password for my normal Ubuntu account.
+These were WSL and Ubuntu Insights environment-related messages. They were not evidence of an application failure.
 
-### Challenge 2: WSL Systemd User Session Warning
+This exercise helped me identify system-level errors and distinguish environmental warnings from application-related problems.
 
-When starting Ubuntu, I encountered a warning indicating that the systemd user session could not start.
+## 9. Important Linux Log Inspection Commands
 
-**Observation:** Ubuntu still opened successfully, allowing me to continue with the practical exercises.
-
-### Challenge 3: Windows Agent Connection Warnings
-
-The system logs repeatedly displayed warnings about the Windows agent connection and a missing agent port file.
-
-**Observation:** These messages were related to WSL integration. They did not prevent me from accessing the Linux log files.
-
-### Challenge 4: WSL and Ubuntu Insights Errors
-
-Kernel and system journal inspection revealed WSL startup timeout messages, graphics-related errors, and Ubuntu Insights service failures.
-
-**Observation:** I identified and documented these errors using grep, dmesg and journalctl. They were not treated as confirmed application failures.
-
-## 10. Key Linux Commands Practised
+The following commands were practised during the assignment:
 
 | Command | Purpose |
 |---|---|
 | `cd /var/log` | Navigate to the Linux log directory. |
-| `pwd` | Display the current working directory. |
-| `ls -lah` | List files with detailed information. |
-| `tail -n 20` | Display the last 20 lines of a file. |
-| `grep` | Search for specific text in files. |
-| `grep -i` | Search without case sensitivity. |
-| `dmesg -T` | Display kernel messages with readable timestamps. |
-| `tail -f` | Monitor new log entries in real time. |
-| `journalctl` | Inspect systemd journal records. |
-| `journalctl -p err` | Filter journal entries by error priority. |
-| `sudo` | Execute commands with administrator privileges. |
-| `passwd` | Change a Linux user password. |
+| `pwd` | Display the current directory. |
+| `ls -lah` | List files, including hidden files, with details. |
+| `sudo tail -n 20 /var/log/syslog` | Display the latest 20 system log entries. |
+| `sudo grep -iE 'error|fail|warning' /var/log/syslog` | Search system logs for errors, failures, and warnings. |
+| `sudo tail -n 20 /var/log/auth.log` | Display recent authentication records. |
+| `sudo grep -i "failed" /var/log/auth.log` | Search authentication logs for failed messages. |
+| `sudo grep -i "accepted" /var/log/auth.log` | Search for successful authentication messages. |
+| `sudo dmesg -T` | Display kernel messages with readable timestamps. |
+| `sudo tail -f /var/log/syslog` | Monitor system logs in real time. |
+| `sudo journalctl -n 20 --no-pager` | Display recent systemd journal entries. |
+| `sudo journalctl -p err -n 10 --no-pager` | Display recent error-priority journal entries. |
+
+## 10. Challenges Faced and Troubleshooting
+
+During the assignment, I encountered a few challenges:
+
+**1. Forgotten Ubuntu password**
+
+I could not initially access my normal Ubuntu account because I had forgotten its password.
+
+**Solution:** I opened the Ubuntu distribution as the root user from PowerShell and reset the password using the `passwd` command.
+
+**2. WSL system and service warnings**
+
+While inspecting system logs, I encountered WSL-related warnings, graphics adapter errors, and Ubuntu Insights service failures.
+
+**Solution:** I used `grep`, `dmesg`, and `journalctl` to investigate the messages and understand that they were related to the WSL environment and Ubuntu Insights services.
+
+**3. Understanding log output**
+
+Some log entries contained technical messages that were difficult to interpret.
+
+**Solution:** I used targeted commands such as `tail`, `grep`, and `journalctl` to filter the output and focus on relevant messages.
 
 ## 11. Skills and Knowledge Gained
 
-By completing this task, I gained practical experience in:
+Through this assignment, I gained practical experience in:
 
-1. Locating and understanding Linux log files.
-2. Inspecting general system activity.
-3. Examining authentication records.
-4. Searching for errors and warnings using grep.
-5. Reading kernel messages using dmesg.
-6. Monitoring logs in real time.
-7. Using journalctl to inspect system events.
-8. Interpreting system errors and warnings.
-9. Troubleshooting basic Linux environment issues.
-10. Understanding the importance of logs in system administration and DevOps operations.
-
-## 12. Conclusion
-
-This task improved my understanding of Linux system logging and troubleshooting. I gained hands-on experience using Ubuntu on WSL 2 to inspect system, authentication, and kernel logs.
-
-I also learned how to identify errors and warnings, monitor system activity in real time, and use different Linux commands to investigate system behaviour.
+- Navigating the Linux filesystem.
+- Locating and understanding important Linux log files.
+- Inspecting system and authentication logs.
+- Searching for errors and warnings using `grep`.
+- Reading kernel messages using `dmesg`.
+- Monitoring logs in real time.
+- Inspecting systemd journal entries using `journalctl`.
+- Identifying and interpreting WSL-related system messages.
+- Using Linux commands to support troubleshooting and system monitoring.
 
 These skills are important for DevOps engineers because logs provide valuable information for monitoring infrastructure, diagnosing service problems, and maintaining reliable systems.
 
-**Task:** Linux Log Inspection  
+## 12. Task Summary
+
+**Task:** Linux Log Inspection
+
 **Status:** Practical exercises completed; documentation prepared.
+
+**Environment:** Ubuntu Linux on WSL 2.
+
+**Main Tools:** Linux terminal, `grep`, `tail`, `dmesg`, and `journalctl`.
+
+**Outcome:** Successfully explored Linux log files, inspected system and authentication activity, investigated kernel messages, practised real-time log monitoring, and identified error-level journal entries.
+
