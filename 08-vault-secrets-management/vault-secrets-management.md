@@ -455,4 +455,259 @@ Successfully deployed Vault locally using Docker and practised secret management
 \- Document verified results and troubleshooting.
 
 \- Commit and push the completed assignment to GitHub.
+---
+
+# Day 2 – Vault Token Lifecycle and Secret Lifecycle Management
+
+## 1. Objective
+
+The objective of Day 2 was to practise Vault token lifecycle management and understand how to manage secret versions securely. The exercises covered token inspection, renewal, revocation, access verification, soft deletion, recovery and permanent destruction.
+
+## 2. Environment
+
+- Operating System: Windows 11
+- Terminal: Windows PowerShell
+- Container Runtime: Docker Desktop
+- Vault Container: `vault-dev`
+- Vault Address: `http://127.0.0.1:8200`
+- Secret Engine: KV Version 2
+
+Verified that the Vault container was still running:
+
+```powershell
+docker ps --filter name=vault-dev
+```
+
+The container was running successfully, and the Day 1 Vault configuration remained available.
+
+## 3. Inspecting the Root Token
+
+Inspected the token currently used by the Vault CLI inside the container:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 vault token lookup"
+```
+
+**Verified results:**
+- Policy: `root`
+- Token type: `service`
+- Renewable: `false`
+- TTL: `0s`
+- Orphan: `true`
+
+This demonstrated that the development root token has administrative permissions and is not renewable.
+
+## 4. Inspecting the Restricted Token
+
+Inspected the restricted token created during Day 1:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=<restricted-token> vault token lookup"
+```
+
+**Verified results:**
+- Policies: `default` and `devops-readonly`
+- Token type: `service`
+- Renewable: `true`
+- Creation TTL: `768h`
+- Token had a valid expiration time.
+
+This confirmed that the token inherited the intended read-only policy.
+
+## 5. Token Renewal
+
+Renewed the restricted token:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=<restricted-token> vault token renew"
+```
+
+**Verified result:**
+
+Vault successfully renewed the token.
+
+Vault returned a TTL warning because the requested duration of 768 hours exceeded the effective maximum TTL at the time of renewal. The duration was automatically capped.
+
+Inspected the token again:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=<restricted-token> vault token lookup"
+```
+
+The output contained a `last_renewal` timestamp and confirmed that the token remained renewable.
+
+## 6. Token Revocation
+
+Revoked the restricted token:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=<restricted-token> vault token revoke -self"
+```
+
+**Verified result:**
+
+```text
+Success! Revoked token (if it existed)
+```
+
+Attempted to retrieve the secret using the revoked token:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=<revoked-token> vault kv get secret/devops-app"
+```
+
+Vault returned HTTP 403 with `permission denied` and `invalid token`.
+
+This confirmed that the revoked token could no longer authenticate.
+
+## 7. Creating and Testing a Replacement Token
+
+Created a fresh restricted token:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 vault token create -policy=devops-readonly"
+```
+
+Inspected the new token:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=<new-restricted-token> vault token lookup"
+```
+
+**Verified results:**
+- Policies: `default` and `devops-readonly`
+- Renewable: `true`
+- Token type: `service`
+- Token had a valid TTL.
+
+Tested secret retrieval:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=<new-restricted-token> vault kv get secret/devops-app"
+```
+
+**Verified result:** The replacement restricted token successfully retrieved Version 2 of the application secret.
+
+## 8. Soft-Deleting a Secret Version
+
+Inspected the secret metadata:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 vault kv metadata get secret/devops-app"
+```
+
+Confirmed that Versions 1 and 2 were available and neither was destroyed.
+
+Soft-deleted Version 2:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 vault kv delete -versions=2 secret/devops-app"
+```
+
+**Verified result:** Vault successfully processed the deletion request.
+
+Inspected the metadata again and confirmed:
+- Version 2 had a deletion timestamp.
+- `destroyed` remained `false`.
+- Version 1 remained untouched.
+
+## 9. Recovering a Soft-Deleted Version
+
+Recovered Version 2:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 vault kv undelete -versions=2 secret/devops-app"
+```
+
+**Verified result:** Vault successfully processed the undelete operation.
+
+Retrieved Version 2:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 vault kv get -version=2 secret/devops-app"
+```
+
+The original Version 2 data was successfully retrieved. Its deletion time returned to `n/a`, confirming recovery.
+
+## 10. Permanently Destroying a Secret Version
+
+Permanently destroyed Version 1:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 vault kv destroy -versions=1 secret/devops-app"
+```
+
+**Verified result:** Vault successfully processed the permanent destruction request.
+
+Inspected the metadata:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 vault kv metadata get secret/devops-app"
+```
+
+The output confirmed:
+- Version 1: `destroyed: true`
+- Version 2: `destroyed: false`
+
+Version 1 was permanently destroyed and could no longer be recovered.
+
+## 11. Final Secret Verification
+
+Retrieved the current secret:
+
+```powershell
+docker exec vault-dev sh -c "VAULT_ADDR=http://127.0.0.1:8200 vault kv get secret/devops-app"
+```
+
+**Verified result:**
+- Current version: 2
+- Destroyed: `false`
+- Deletion time: `n/a`
+- Secret retrieval: successful.
+
+This confirmed that permanently destroying Version 1 did not affect Version 2.
+
+## 12. Day 2 Challenges and Troubleshooting
+
+- Understanding the difference between the root token and a restricted token.
+- Interpreting Vault's TTL warning during token renewal.
+- Verifying that token revocation prevents further access.
+- Understanding the differences between soft deletion, recovery and permanent destruction.
+- Confirming that permanent destruction of one version does not affect another version.
+
+These exercises were completed successfully through Vault CLI commands and metadata inspection.
+
+## 13. Security Considerations
+
+- Root tokens should be reserved for administrative operations.
+- Application tokens should follow the principle of least privilege.
+- Tokens should be revoked when they are no longer needed or are compromised.
+- Soft deletion and permanent destruction have different recovery implications.
+- Real passwords, tokens and other sensitive credentials must not be committed to GitHub.
+- Vault development mode and in-memory storage are suitable for learning, not production deployments.
+
+## 14. Day 2 Outcome
+
+Successfully practised Vault token lifecycle management, including inspection, renewal and revocation. Created a replacement restricted token and verified its access permissions.
+
+Also demonstrated KV Version 2 secret lifecycle management by soft-deleting Version 2, recovering it, permanently destroying Version 1 and verifying that Version 2 remained accessible.
+
+**Day 2 practical exercises: Completed.**
+
+## 15. Overall Task 8 Status
+
+The two-day Vault Secrets Management assignment covered:
+
+- Vault deployment using Docker.
+- Secret storage and retrieval.
+- KV Version 2 secret versioning.
+- Vault policies and restricted tokens.
+- Token inspection, renewal and revocation.
+- Soft deletion, recovery and permanent destruction.
+- Access-control verification.
+- Documentation of commands, results and troubleshooting.
+
+**Practical work: Completed.**
+
+**Documentation: Day 2 update recorded; final GitHub submission pending.**
 
