@@ -1,0 +1,14 @@
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Vault local files
+*.vault
+vault-token
+vault-data/
+
+# Sensitive credentials
+secrets.json
+credentials.json
